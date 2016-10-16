@@ -1,0 +1,154 @@
+---
+
+output: html_document
+---
+Assignment: Prediction Assignment 
+============================
+Background
+===========
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+ Task
+===========
+
+1.  Create a report describing how you built your model
+2.  Use cross validation, what is the expected out of sample error 
+3.  Use your prediction model to predict 20 different test cases 
+
+```{r, message=FALSE}
+library(lubridate)
+library(AppliedPredictiveModeling)
+library(forecast)
+library(caret)
+library(plyr)
+library(gbm)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(rattle)
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+
+The training  and testing data for the project are below:
+
+```{r load data, tidy=TRUE, cache=TRUE, echo=TRUE}
+
+TrainUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+TestUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(TrainUrl,destfile = "./course_8/pml-training.csv", method = "curl")
+download.file(TestUrl,destfile = "./course_8/pml-testing.csv", method = "curl")
+
+Training_data<-read.csv(TrainUrl, header = TRUE, na.strings=c("NA","#DIV/0!",""))
+Testing_data <-read.csv(TestUrl, header = TRUE, na.strings=c("NA","#DIV/0!",""))
+
+```
+
+Cleaning the data
+==================
+
+We then clean the data: cleaining the data for NA and Zeros and Remove columns full of NAs.
+
+```{r cleaning data, tidy=TRUE, cache=TRUE, echo=TRUE}
+
+#cleaining the data for NA and Zeros
+# Remove columns full of NAs.
+
+new_testing <- names(Testing_data[,colSums(is.na(Testing_data)) == 0])[8:59]
+
+Training_data<- Training_data[,c(new_testing,"classe")]
+Testing_data <- Testing_data[,c(new_testing,"problem_id")]
+
+
+```
+
+
+Partioning the training set
+=============================
+
+create test/ train data sets: 
+
+We will split our data into a training data set (75% of the total cases) and a testing data set (25% of the total cases).
+
+```{r  data summary,tidy=TRUE, cache=TRUE, echo=TRUE}
+
+#str(Training_data)
+##summary(Training_data)
+
+set.seed(1234)
+## create test/ train data sets 
+
+InTrain = createDataPartition(Training_data$classe, p=.75, list = FALSE)
+training =Training_data[ InTrain,]
+testing = Training_data[-InTrain,]
+
+
+dim(training)
+dim(testing)
+
+```
+
+Classification tree as a model
+==============================
+
+```{r  classification tree,  tidy=TRUE,,cache=TRUE, echo=TRUE}
+ 
+fit1 <- rpart(classe ~., data = training, method="class")
+
+
+#predict on test values
+predtree <- predict(fit1,testing,type = "class")
+
+
+#Confusion Matrix to test results:
+
+
+confusionMatrix(predtree, testing$classe)
+
+```
+
+#Random Forest Model:
+
+```{r Random Forest Model,  tidy=TRUE,cache=TRUE, echo=TRUE}
+
+## Random Forest Model
+# Train the model on the Split Training Data
+
+rfmodel <- randomForest(classe ~. , data = training)
+
+# Use Model to predict on the Allocated Test Set
+
+predrf <- predict(rfmodel, testing, type = "class")
+
+# Create Confusion Matrix to Check Accuracy of Model
+confusionMatrix(predrf, testing$classe)
+```
+The accuracy of the model is 0.9925. The out of sample error is 0.0075.
+
+Final Predict Test:
+
+```{r final Model,  tidy=TRUE,cache=TRUE, echo=TRUE}
+
+# Final Predict Test
+predict(rfmodel, Testing_data, type = "class")
+
+```
+ 
+ Graphs and figures
+==============
+
+```{r plot 1, tidy=TRUE, fig.height=4 , fig.width= 4, cache=TRUE}
+
+plot(training$classe, col="red", main="levels of the variable classe training", xlab="classe levels", ylab="Frequency")
+
+```
+
+
+Decision Tree Model
+
+```{r classification tree plot, tidy=TRUE, fig.height= 3.75, fig.width= 3.75, cache=TRUE}
+
+##plot the classification tree
+fancyRpartPlot(fit1)
+
+```
