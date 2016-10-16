@@ -1,6 +1,6 @@
 ---
 
-output: pdf_document
+output: html_document
 ---
 Assignment: Prediction Assignment 
 ============================
